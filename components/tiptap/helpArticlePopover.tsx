@@ -3,6 +3,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { Input } from "@/components/ui/input";
 import { useBreakpoint } from "@/components/useBreakpoint";
+import { useDebouncedCallback } from "@/components/useDebouncedCallback";
 import { useOnOutsideClick } from "@/components/useOnOutsideClick";
 
 type HelpArticle = {
@@ -36,16 +37,28 @@ const HelpArticleMentionPopover: React.FC<HelpArticleMentionPopoverProps> = ({
   const { isBelowMd: isMobile } = useBreakpoint("md");
 
   const [mobileQuery, setMobileQuery] = React.useState("");
+  const [debouncedMobileQuery, setDebouncedMobileQuery] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const debouncedUpdateMobileQuery = useDebouncedCallback((newQuery: string) => {
+    setDebouncedMobileQuery(newQuery);
+  }, 300);
   React.useEffect(() => {
     if (isMobile && isOpen) {
       setMobileQuery("");
+      setDebouncedMobileQuery("");
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [isMobile, isOpen]);
 
-  const filterQuery = isMobile ? mobileQuery : query;
-  const filtered = articles.filter((a) => a.title.toLowerCase().includes(filterQuery.toLowerCase()));
+  const handleMobileQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newQuery = e.target.value;
+    setMobileQuery(newQuery);
+    debouncedUpdateMobileQuery(newQuery);
+  };
+
+  const filterQuery = isMobile ? debouncedMobileQuery : query;
+  const filtered = (articles || []).filter((a) => a?.title?.toLowerCase().includes(filterQuery.toLowerCase()));
 
   if (!isOpen || (!position && !isMobile)) return null;
 
@@ -117,7 +130,7 @@ const HelpArticleMentionPopover: React.FC<HelpArticleMentionPopoverProps> = ({
           type="text"
           placeholder="Search help center articles..."
           value={mobileQuery}
-          onChange={(e) => setMobileQuery(e.target.value)}
+          onChange={handleMobileQueryChange}
           className="h-10 flex-1"
         />
         <button
