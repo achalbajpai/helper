@@ -145,7 +145,10 @@ const TipTapEditor = ({
           }
           if (event.key === "ArrowDown") {
             event.preventDefault();
-            setMentionState((s) => ({ ...s, selectedIndex: Math.min(s.selectedIndex + 1, helpArticles.length - 1) }));
+            setMentionState((s) => ({
+              ...s,
+              selectedIndex: Math.min(s.selectedIndex + 1, Math.max(0, filteredArticles.length - 1)),
+            }));
             return true;
           }
           if (event.key === "ArrowUp") {
@@ -358,7 +361,9 @@ const TipTapEditor = ({
     return editor.view.state.doc.textBetween(mentionState.range.from + 1, cursorPos, "", "");
   };
 
-  const filteredArticles = helpArticles.filter((a) => a.title.toLowerCase().includes(getMentionQuery().toLowerCase()));
+  const filteredArticles = (helpArticles || []).filter((a) =>
+    a?.title?.toLowerCase().includes(getMentionQuery().toLowerCase()),
+  );
 
   const handleSelectArticle = (article: { title: string; url: string }) => {
     if (!editor || !mentionState.range) return;
@@ -374,7 +379,7 @@ const TipTapEditor = ({
 
   useEffect(() => {
     setMentionState((state) => ({ ...state, selectedIndex: 0 }));
-  }, [mentionState.isOpen, getMentionQuery(), filteredArticles.map((a) => a.url).join(",")]);
+  }, [mentionState.isOpen, getMentionQuery(), filteredArticles.map((a) => a?.url || "").join(",")]);
 
   const showActionButtons = !!actionButtons && (!toolbarOpen || isAboveMd);
 
