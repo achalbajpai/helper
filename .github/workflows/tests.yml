@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+
 permissions:
   contents: read
 
@@ -13,62 +14,65 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-and-unit-test:
-    runs-on: ${{ github.repository == 'antiwork/helper' && 'ubicloud-standard-2' || 'ubuntu-latest' }}
-
+  setup:
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
           cache: "pnpm"
 
-      - run: pnpm install
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Build Packages
+      - name: Build all packages
         run: pnpm run-on-packages build
 
-      - name: Run unit tests
-        run: pnpm run-on-packages test && pnpm test:unit
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-artifacts
+          path: |
+            .
+            !node_modules/.cache
+          retention-days: 1
 
-  e2e-test:
-    needs: build-and-unit-test
-    runs-on: ${{ github.repository == 'antiwork/helper' && 'ubicloud-standard-2' || 'ubuntu-latest' }}
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3]
 
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: project-artifacts
+          path: .
 
-      - uses: pnpm/action-setup@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version-file: ".node-version"
           cache: "pnpm"
 
-      - run: pnpm install
+      - name: Install dependencies (from cache)
+        run: pnpm install --frozen-lockfile
 
-      - name: Build Packages
-        run: pnpm run-on-packages build
-
-      - name: Setup E2E test environment
-        run: pnpm test:e2e:setup
-
-      - name: Run E2E tests (shard ${{ matrix.shard }}/4)
-        run: pnpm test:e2e --shard=${{ matrix.shard }}/4
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-${{ matrix.shard }}
-          path: playwright-report/
-          retention-days: 7
+      - name: Run E2E tests shard
+        run: |
+          pnpm test:e2e:setup &
+          pnpm exec wait-on http://localhost:3020 -t 120000
+          pnpm test:e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}

@@ -52,14 +52,4 @@ export default defineConfig({
       timeout: 60000,
     },
   ],
-
-  /* Run your local server before starting the tests */
-  // Make sure your port matches the one in your `.env.test.local` file
-  webServer: {
-    command: "scripts/e2e-test-server.sh",
-    url: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3020",
-    reuseExistingServer: true,
-    ignoreHTTPSErrors: true,
-    timeout: 120 * 1000, // 2 minutes for server startup
-  },
 });
