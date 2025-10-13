@@ -46,24 +46,20 @@ set -e
 echo "===================="
 
 # Parse command line arguments
-PLAYWRIGHT_COMMAND=""
+PLAYWRIGHT_BASE_COMMAND="pnpm playwright test"
+PLAYWRIGHT_ARGS=""
 
 # Collect all arguments to pass to playwright
 while [[ $# -gt 0 ]]; do
-    PLAYWRIGHT_COMMAND="$PLAYWRIGHT_COMMAND $1"
+    if [[ "$1" == "pnpm" ]] || [[ "$1" == "playwright" ]] || [[ "$1" == "test" ]]; then
+        shift
+        continue
+    fi
+    PLAYWRIGHT_ARGS="$PLAYWRIGHT_ARGS $1"
     shift
 done
 
-# If no arguments provided, default to basic playwright test
-if [ -z "$PLAYWRIGHT_COMMAND" ]; then
-    PLAYWRIGHT_COMMAND="pnpm playwright test"
-fi
-
-# Ensure direct 'playwright' invocations go through the pnpm script wrapper
-# which sets necessary Node conditions (e.g., react-server)
-if [[ "$PLAYWRIGHT_COMMAND" =~ ^[[:space:]]*playwright[[:space:]] ]]; then
-    PLAYWRIGHT_COMMAND="pnpm $PLAYWRIGHT_COMMAND"
-fi
+PLAYWRIGHT_COMMAND="$PLAYWRIGHT_BASE_COMMAND$PLAYWRIGHT_ARGS"
 
 echo "🚀 Starting E2E test run..."
 if [ "$PLAYWRIGHT_USE_PREBUILT" = "1" ]; then 
